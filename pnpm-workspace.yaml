@@ -12,3 +12,6 @@ trustPolicy: "no-downgrade"
 packages:
   - "apps/*"
   - "packages/*"
+
+catalog:
+  turbo: 2.10.6
