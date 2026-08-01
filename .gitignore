@@ -1,0 +1,117 @@
+# macOS finder and volume metadata
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+.fseventsd
+.VolumeIcon.icns
+.DocumentRevisions-V100
+.TemporaryItems
+Icon?
+
+# Windows shell and thumbnail metadata
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Linux desktop and trash metadata
+.directory
+.Trash-*
+.fuse_hidden*
+.nfs*
+
+# Editors and IDEs
+.idea/
+.fleet/
+*.swp
+*.swo
+*.sublime-workspace
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+
+# Node and package manager artifacts (pnpm workspaces)
+node_modules/
+.pnpm-store/
+.pnpm-debug.log*
+npm-debug.log*
+yarn-error.log*
+.npmrc.local
+*.tgz
+
+# Build output (tsdown / Rolldown JS + d.ts, Lightning CSS bundles)
+dist/
+build/
+lib/
+out/
+*.tsbuildinfo
+
+# TypeScript and lint caches (tsc, tsgo, oxlint, oxfmt)
+.tsbuildinfo
+.oxlintcache
+.cache/
+
+# Vite, Next.js and Turbo caches
+.vite/
+vite.config.*.timestamp-*
+.next/
+.turbo/
+next-env.d.ts
+
+# Test runner output (Vitest Browser Mode, coverage, axe reports)
+coverage/
+.vitest/
+.vitest-cache/
+
+# Playwright runtime output — VRT baselines under __screenshots__/ stay committed
+test-results/
+playwright-report/
+playwright/.cache/
+blob-report/
+*-actual.png
+*-diff.png
+
+# Docs site build output and Pagefind index (apps/docs → GitHub Pages)
+apps/docs/dist/
+apps/docs/.astro/
+pagefind/
+
+# Smoke consumers install a packed tarball, never a workspace link
+apps/smoke-*/package-lock.json
+apps/smoke-*/yarn.lock
+
+# Size budgets and bundle analysis reports
+.size-limit.json
+stats.html
+bundle-analysis/
+
+# React Native / Expo showcase (post-1.0, apps/rn-showcase)
+.expo/
+.expo-shared/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+ios/Pods/
+android/.gradle/
+android/app/build/
+
+# Environment files and local secrets
+.env
+.env.*
+!.env.example
+
+# Local scratch, logs and temp files
+*.log
+logs/
+tmp/
+scratch/
+.local/
