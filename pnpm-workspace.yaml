@@ -1,0 +1,14 @@
+auditLevel: "high"
+blockExoticSubdeps: true
+minimumReleaseAge: 10080 # 7 days
+minimumReleaseAgeStrict: true
+nodeLinker: "isolated"
+preferFrozenLockfile: true
+preferOffline: false
+resolvePeersFromWorkspaceRoot: true
+strictPeerDependencies: true
+trustPolicy: "no-downgrade"
+
+packages:
+  - "apps/*"
+  - "packages/*"
