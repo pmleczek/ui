@@ -7,13 +7,15 @@
     "format": "turbo format",
     "format:fix": "turbo format:fix",
     "lint": "turbo lint",
-    "lint:fix": "turbo lint:fix"
+    "lint:fix": "turbo lint:fix",
+    "typecheck": "turbo typecheck"
   },
   "dependencies": {},
   "devDependencies": {
     "oxfmt": "catalog:",
     "oxlint": "catalog:",
-    "turbo": "catalog:"
+    "turbo": "catalog:",
+    "typescript": "catalog:"
   },
   "peerDependencies": {},
   "engines": {

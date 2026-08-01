@@ -14,7 +14,8 @@
     "lint:fix": {
       "cache": false,
       "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/oxlint.config.ts"]
-    }
+    },
+    "typecheck": {}
   },
   "ui": "tui"
 }
