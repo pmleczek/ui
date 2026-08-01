@@ -5,11 +5,14 @@
   "license": "MIT",
   "scripts": {
     "format": "turbo format",
-    "format:fix": "turbo format:fix"
+    "format:fix": "turbo format:fix",
+    "lint": "turbo lint",
+    "lint:fix": "turbo lint:fix"
   },
   "dependencies": {},
   "devDependencies": {
     "oxfmt": "catalog:",
+    "oxlint": "catalog:",
     "turbo": "catalog:"
   },
   "peerDependencies": {},

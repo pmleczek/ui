@@ -15,4 +15,5 @@ packages:
 
 catalog:
   oxfmt: 0.60.0
+  oxlint: 1.75.0
   turbo: 2.10.6
