@@ -3,9 +3,13 @@
   "version": "0.0.0",
   "private": true,
   "license": "MIT",
-  "scripts": {},
+  "scripts": {
+    "format": "turbo format",
+    "format:fix": "turbo format:fix"
+  },
   "dependencies": {},
   "devDependencies": {
+    "oxfmt": "catalog:",
     "turbo": "catalog:"
   },
   "peerDependencies": {},

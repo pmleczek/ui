@@ -1,0 +1,13 @@
+{
+  "name": "@pmleczek/theme",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "format": "oxfmt --check --config ../../oxfmt.config.ts",
+    "format:fix": "oxfmt --config ../../oxfmt.config.ts"
+  },
+  "dependencies": {},
+  "devDependencies": {},
+  "peerDependencies": {}
+}

@@ -1,5 +1,10 @@
 {
   "$schema": "https://turborepo.dev/schema.json",
-  "tasks": {},
+  "tasks": {
+    "format": {},
+    "format:fix": {
+      "cache": false
+    }
+  },
   "ui": "tui"
 }
