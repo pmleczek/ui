@@ -15,7 +15,9 @@
       "cache": false,
       "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/oxlint.config.ts"]
     },
-    "typecheck": {}
+    "typecheck": {
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/tsconfig"]
+    }
   },
   "ui": "tui"
 }

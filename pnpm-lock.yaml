@@ -38,9 +38,14 @@ importers:
 
   packages/theme:
     devDependencies:
+      '@pmleczek/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
+
+  packages/tsconfig: {}
 
 packages:
 
