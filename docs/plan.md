@@ -1,6 +1,6 @@
 # React UI Kit — Architecture & Roadmap
 
-> Package names are written as `@scope/ui` throughout; substitute the real scope.
+> Scope is `@pmleczek`. Every component ships as its own npm package — `@pmleczek/button`, `@pmleczek/dialog`, … — published from `packages/components/<name>`. There is no umbrella package.
 > Status: planning. Target: MIT, open source, npm-distributed, a11y-first, **zero runtime dependencies**.
 > This document is a design record, not a promise. Scope, ordering, and estimates will move.
 
@@ -16,15 +16,17 @@ The 2026 landscape:
 | Copy-paste styled   | shadcn/ui (Base UI-backed by default since July 2026) | Styles + behavior            | You own the copied code, so updates are manual; styling assumes Tailwind |
 | Full design systems | MUI, Mantine, Chakra                                  | Everything                   | Larger dependency trees; each brings its own theming API to learn        |
 
-**The gap:** an installable, versioned, zero-runtime-CSS, Tailwind-free styled kit with **no runtime dependencies at all**. You `pnpm add` it, import one stylesheet, get accessible components, and `pnpm up` for fixes.
+**The gap:** an installable, versioned, zero-runtime-CSS, Tailwind-free styled kit with **no third-party runtime dependencies at all**, delivered one package per component. You `pnpm add @pmleczek/button`, import its stylesheet, get an accessible component, and `pnpm up` for fixes.
 
-Pitch: **"shadcn's quality, delivered as a package you can upgrade, with zero dependencies and CSS you can actually override."**
+Pitch: **"shadcn's quality, delivered as packages you can upgrade, with no third-party dependencies and CSS you can actually override."**
 
-The zero-dep claim is now your single strongest marketing asset. Every competitor has a dependency tree. Put the number in the README badge and never let it move.
+The dependency claim is your single strongest marketing asset. Every competitor has a dependency tree; a component package here pulls in `@pmleczek/internal` and `@pmleczek/theme` and nothing else. Put the third-party count in the README badge and never let it move off zero.
+
+Per-component packaging sharpens a second claim that a monolithic package can't make honestly: **you install what you use, and the install size is the whole story.** No tree-shaking caveats, no "it's only large if you import everything", no side-effect footnotes. `@pmleczek/button` is a few kilobytes because it *is* a few kilobytes.
 
 Non-goals — write these in the README on day one:
 
-- Not a Tailwind plugin. Not a copy-paste registry. Not a kitchen sink.
+- Not a Tailwind plugin. Not a copy-paste registry. Not a kitchen sink — there is no umbrella package, so you install only what you use.
 - Not universal-first. Web is the product; RN is an experiment (§9).
 
 ---
@@ -61,7 +63,7 @@ Two important caveats:
 
 ### 2.2 What you must actually build
 
-Ordered roughly by dependency. This is your `internal/` layer — it never ships as a public API, so you can refactor it freely.
+Ordered roughly by dependency. This is `@pmleczek/internal` (§4.1). It is published but undocumented — no user is meant to import it — yet because 66 component packages depend on it by version range, it is **not** freely refactorable the way an unexported `internal/` folder in a single package would have been. A breaking change there is a coordinated major across the whole set. Design these interfaces as if they were public, then don't document them.
 
 **Group A — prop & state plumbing** _(easy, ~1 week)_
 
@@ -115,12 +117,12 @@ You have three options:
 
 **(b) Write your own JS positioner.** ~600–1000 lines for a solid subset: offset, flip, shift, arrow, size, autoUpdate. Very achievable; the bug tail is long and boring.
 
-**(c) Take `@floating-ui/react-dom`** — 4 packages, single author (who also works on Base UI), no third-party transitives. Breaks your zero-dep claim.
+**(c) Take `@floating-ui/react-dom`** — 4 packages, single author (who also works on Base UI), no third-party transitives. Breaks the no-third-party-dependency claim — and note it would break it for `@pmleczek/internal`, so the badge changes on every component package at once.
 
 **Recommendation: (a) as the primary path with (b) as a narrow fallback, behind one internal module.**
 
 ```ts
-// packages/ui/src/internal/positioning/index.ts
+// packages/internal/src/positioning/index.ts
 export function usePosition(options: PositionOptions): PositionResult;
 // Implementation A: CSS anchor positioning (no JS positioning at all)
 // Implementation B: JS fallback behind @supports not (anchor-name: --x)
@@ -169,7 +171,8 @@ This is precisely what Tailwind users fight when they reach for `!important` and
 
 ```css
 @layer reset, ui, app;
-@import "@scope/ui/styles.css" layer(ui);
+@import "@pmleczek/theme/styles.css" layer(ui);
+@import "@pmleczek/button/styles.css" layer(ui);
 ```
 
 ### 3.2 Three-tier tokens
@@ -251,11 +254,28 @@ Uniform with the state attributes your primitives emit (`data-open`, `data-disab
 
 ### 3.4 Authoring & distribution
 
-- Plain CSS with native nesting, one file per component, colocated.
+- Plain CSS with native nesting, one file per component, colocated inside that component's package.
 - Bundle with **Lightning CSS** — minify, transpile nesting, no PostCSS chain. (Build-time only; doesn't count against runtime deps.)
-- Ship: `styles.css` (everything), `styles/base.css` (reset + tokens), `styles/button.css` (per component).
-- `"sideEffects": ["*.css"]`.
+- Ship one stylesheet per package: `@pmleczek/theme/styles.css` (layer order + reset + tokens), `@pmleczek/button/styles.css`, and so on. There is no combined bundle, because there is no umbrella package.
+- `"sideEffects": ["*.css"]` in every package.
 - Never auto-inject CSS from JS — breaks RSC, SSR ordering, and CSP.
+
+**Every component stylesheet repeats the layer-order statement as its first line.** This is the one CSS rule that per-component packaging forces:
+
+```css
+/* packages/components/button/src/Button.css */
+@layer ui.reset, ui.tokens, ui.base, ui.components, ui.variants;
+
+@layer ui.components {
+  .ui-Button {
+    /* … */
+  }
+}
+```
+
+A bare `@layer` statement is idempotent and costs nothing after minification. Repeating it makes each stylesheet self-sufficient about ordering. Without it, sublayer order is decided by whichever file the bundler happens to emit first — so `ui.variants` could outrank `ui.components` in one consumer's app and not another's, depending only on their import order. That class of bug is unreproducible-by-report and would burn days. One line per file removes it entirely.
+
+Consumers still import `@pmleczek/theme/styles.css` for the tokens and reset, but they can no longer break themselves by importing it second.
 
 ### 3.5 A11y CSS as table stakes
 
@@ -291,65 +311,127 @@ Windows High Contrast support alone will get attention from the a11y community.
 
 ## 4. Repository & package layout
 
+**One npm package per component**, published independently from `packages/components/<name>`. Consumers install exactly the components they use; there is no umbrella package that re-exports everything.
+
 ```
 ui/
 ├── packages/
-│   ├── ui/                     # @scope/ui — components + CSS
+│   ├── components/                 # one npm package per component
+│   │   ├── button/                 # @pmleczek/button
+│   │   │   ├── src/{index.ts,Button.tsx,Button.css,
+│   │   │   │       Button.test.tsx,Button.stories.tsx}
+│   │   │   └── package.json
+│   │   ├── dialog/                 # @pmleczek/dialog
+│   │   ├── menu/                   # @pmleczek/menu
+│   │   └── …                       # 66 packages at 1.0
+│   ├── internal/                   # @pmleczek/internal — the primitives layer
 │   │   ├── src/
-│   │   │   ├── internal/       # the primitives layer — NOT exported
-│   │   │   │   ├── props/      # mergeProps, composeRefs, Slot
-│   │   │   │   ├── state/      # useControllableState, useEventCallback
-│   │   │   │   ├── dom/        # tabbable, ownerDocument, observers
-│   │   │   │   ├── focus/      # FocusScope, useRovingFocus, useTypeahead
-│   │   │   │   ├── layers/     # DismissableLayer, Portal, Presence, scrollLock
-│   │   │   │   ├── positioning/# the ONE geometry module
-│   │   │   │   └── live/       # live region manager
-│   │   │   ├── components/Button/{index.ts,Button.tsx,Button.css,
-│   │   │   │                      Button.test.tsx,Button.visual.tsx}
-│   │   │   ├── styles/{reset.css,tokens.css,index.css}
-│   │   │   └── index.ts
+│   │   │   ├── props/              # mergeProps, composeRefs, Slot, useRender
+│   │   │   ├── state/              # useControllableState, useEventCallback
+│   │   │   ├── dom/                # tabbable, ownerDocument, observers
+│   │   │   ├── focus/              # FocusScope, useRovingFocus, useTypeahead
+│   │   │   ├── layers/             # DismissableLayer, Portal, Presence, scrollLock
+│   │   │   ├── positioning/        # the ONE geometry module
+│   │   │   └── live/               # live region manager
 │   │   └── package.json
-│   ├── tokens/                 # @scope/ui-tokens — single source of truth
-│   └── icons/                  # @scope/ui-icons — optional, SVG→TSX
+│   ├── theme/                      # @pmleczek/theme — layer order, reset, tokens
+│   ├── icons/                      # @pmleczek/icons — optional, SVG→TSX
+│   ├── tsconfig/                   # private — shared TS config
+│   ├── build/                      # private — shared tsdown + Lightning CSS preset
+│   └── testing/                    # private — vitest setup, renderUI, story types
 ├── apps/
-│   ├── docs/                   # custom Vite + React → GitHub Pages (CSR at M1, SSG at M8)
-│   ├── vrt/                    # story harness + Playwright screenshot matrix
-│   ├── playground/             # Vite SPA — kitchen sink for manual SR testing
-│   ├── smoke-vite/             # consumes the packed tarball, CSR
-│   ├── smoke-next/             # consumes the packed tarball, App Router / RSC
-│   └── rn-showcase/            # Expo app (post-1.0 only)
-├── tooling/                    # shared lint/format/tsconfig packages
+│   ├── docs/                       # custom Vite + React → GitHub Pages (CSR at M1, SSG at M8)
+│   ├── vrt/                        # story harness + Playwright screenshot matrix
+│   ├── playground/                 # Vite SPA — kitchen sink for manual SR testing
+│   ├── smoke-vite/                 # consumes packed tarballs, CSR
+│   ├── smoke-next/                 # consumes packed tarballs, App Router / RSC
+│   └── rn-showcase/                # Expo app (post-1.0 only)
+├── scripts/                        # scaffold, tarball install, release helpers
 └── .changeset/
 ```
 
-Keep `internal/` unexported and undocumented. The moment you export a primitive, you owe semver on it forever, and you lose the freedom to refactor. If demand appears post-1.0, extract `@scope/ui-primitives` as a deliberate product decision.
+`pnpm-workspace.yaml` needs `packages/components/*` listed alongside `packages/*` — the nested glob is not implied by the parent.
+
+Two private packages exist purely to keep 66 component packages from each hand-rolling their own config. `packages/build` exports one tsdown + Lightning CSS preset that a component's build script calls with its entry point; `packages/testing` holds the shared Vitest setup, the `renderUI` helper, and the story types. Any config that would otherwise be copy-pasted into a component package belongs in one of these — at this package count, copy-paste config is how the repo becomes unmaintainable.
+
+### 4.1 Why `@pmleczek/internal` is a published package
+
+Splitting components into separate packages forces a decision the monolith didn't have to make: where do the shared primitives live? The alternative — inlining `internal/` into every component at build time, keeping each package's `dependencies` literally empty — is **not viable**, and the reason is correctness rather than bundle size.
+
+`DismissableLayer`'s layer stack, the live region manager, `Presence`'s animation registry, and the collection registries are all **module-scoped singletons**. They work because every component in the tree reads and writes the same array. Inline them and a consumer who installs Dialog, Popover, and Menu gets three independent layer stacks that cannot see each other — so Esc closes the wrong layer, outside-click dismisses the wrong thing, focus returns to the wrong element, and two live regions announce over each other. Every one of those is a silent, intermittent, report-as-unreproducible bug.
+
+So `internal` ships as a real package and every component package depends on it. The consequences, stated plainly:
+
+- It is **published but undocumented**. README, docs, and CONTRIBUTING all say: importing `@pmleczek/internal` directly is unsupported and its exports change without notice. That's a social contract, not a technical one — someone will import it anyway.
+- The "zero dependencies" claim becomes **"zero third-party dependencies."** Say it that way from the first README, not after someone points out the `dependencies` block isn't empty. A first-party dependency you version-lock is a different thing from a supply-chain dependency, and the distinction survives scrutiny — but only if you make it yourself, first.
+- The refactor freedom of an unexported folder is gone (§2.2). Interfaces in `internal` are load-bearing across 66 packages.
+
+### 4.2 Version locking — the failure mode to design against
+
+The singleton guarantee holds only while the dependency graph resolves to **one** copy of `@pmleczek/internal`. It resolves to two whenever a consumer has component packages whose ranges don't overlap — `@pmleczek/button@1.4.0` and `@pmleczek/dialog@2.0.0` pull `internal@^1` and `internal@^2` side by side, and you're back to the broken layer stack.
+
+Three mechanisms, all cheap, all at M0:
+
+1. **Caret ranges, not exact pins.** `"@pmleczek/internal": "^1.4.0"`. Exact pins would *guarantee* duplication the moment two component versions drift; caret ranges let the package manager dedupe to one copy across the whole major.
+2. **One changesets `fixed` group** covering every component package plus `internal` and `theme`. They always share a version line, so a user who upgrades any of them onto the same version gets a consistent set, and a breaking change in `internal` is a coordinated major across the set — exactly what a monolith release would have been.
+3. **A dev-only duplicate guard in `internal`.** On import, register the version on a well-known symbol; if a different version is already registered, `console.error` with both versions and the fix. Stripped in production builds.
+
+```ts
+// packages/internal/src/guard.ts
+const KEY = Symbol.for("@pmleczek/internal");
+if (process.env.NODE_ENV !== "production") {
+  const seen = (globalThis as Record<symbol, unknown>)[KEY];
+  if (seen && seen !== VERSION) {
+    console.error(
+      `Two copies of @pmleczek/internal are loaded (${seen} and ${VERSION}). ` +
+        `Overlays, focus restoration and announcements will misbehave. ` +
+        `Upgrade all @pmleczek/* packages together: pnpm up "@pmleczek/*"`,
+    );
+  }
+  (globalThis as Record<symbol, unknown>)[KEY] = VERSION;
+}
+```
+
+**During `0.x` this is worse than it will be at 1.0**, and it's worth knowing before the first release rather than after: `^0.1.0` and `^0.2.0` are incompatible ranges under semver, so *every* minor bump splits consumers who upgrade piecemeal. Document "upgrade the whole set together" prominently from the first publish, and keep the pre-1.0 release cadence lockstep across the fixed group.
+
+### 4.3 Package shape
 
 ```jsonc
-// packages/ui/package.json
+// packages/components/button/package.json
 {
+  "name": "@pmleczek/button",
   "type": "module",
   "sideEffects": ["*.css"],
   "exports": {
     ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
     "./styles.css": "./dist/styles.css",
-    "./styles/*": "./dist/styles/*",
-    "./*": { "types": "./dist/*/index.d.ts", "import": "./dist/*/index.js" },
+  },
+  "dependencies": {
+    "@pmleczek/internal": "^1.4.0",
+    "@pmleczek/theme": "^1.4.0",
   },
   "peerDependencies": { "react": ">=19", "react-dom": ">=19" },
-  "dependencies": {},
 }
 ```
+
+Flat exports — with one component per package there are no subpaths to design, which removes an entire category of `exports`-map bug that the monolith would have had to get right 66 times.
+
+Component packages that render a client-side interactive tree need `"use client"` at their entry. With separate packages the boundary is per package rather than per file, which is easier to reason about and easier to test (§8.3).
 
 ### Dependency policy (CONTRIBUTING.md + CI gate)
 
 ```
-Runtime dependencies: ZERO. This is a product guarantee, not a preference.
+Third-party runtime dependencies: ZERO. This is a product guarantee, not a preference.
+First-party: @pmleczek/internal and @pmleczek/theme only, by caret range, in the fixed group.
+Component → component deps: only where the public API genuinely composes (menubar → menu).
 Peer dependencies: react >=19, react-dom >=19.
-Adding one requires a maintainer decision and a README badge change.
+Adding a third-party dep requires a maintainer decision and a README badge change.
 Never: lodash, classnames, date libraries, polyfills, animation libraries.
 ```
 
-CI check: fail the build if `dependencies` is non-empty. One line, permanent guarantee.
+CI check: for every package, fail the build if any entry in `dependencies` is outside the `@pmleczek/` scope. One line, permanent guarantee.
+
+Shared *behavior* goes into `internal`, never into a sibling component package. A dependency web across 66 packages is the specific way this model goes wrong, and it goes wrong quietly — each individual "Select just imports Menu's hook" decision looks reasonable.
 
 ---
 
@@ -426,7 +508,9 @@ Full per-component design docs live in `components/`. Each lists anatomy, TypeSc
 | [`TIER-5-DATA.md`](components/TIER-5-DATA.md)                     | Data & advanced input                         | 8 (4 in 1.0)          | M8        |
 | [`TIER-6-ADVANCED.md`](components/TIER-6-ADVANCED.md)             | Advanced & deferred                           | 9 (6 build, 3 don't)  | post-1.0  |
 
-**1.0 scope: 66 public components.** Tier 5 defers four to 1.x; all of Tier 6 is post-1.0.
+**1.0 scope: 66 public components — and therefore 66 published packages.** Tier 5 defers four to 1.x; all of Tier 6 is post-1.0.
+
+Per-component packaging raises the cost of scope in a way worth internalising now: each component is not just an implementation, it's a package with its own README, changelog, size budget, `publint`/`attw` run, and npm listing. The §10 advice to cut aggressively at M8 applies with more force here than it did to the monolith.
 
 Two ordering constraints that aren't obvious from the tier numbers:
 
@@ -462,6 +546,10 @@ Because you own the primitives, add:
 12. **Primitive-level unit tests** — `FocusScope`, `DismissableLayer`, `useRovingFocus`, `useTypeahead`, and `getTabbableCandidates` each get their own dedicated suite, independent of any component. When a Menu bug appears, you need to know whether it's in Menu or in the roving focus manager.
 13. **Cross-browser interaction tests on WebKit specifically.** Safari is where your focus and scroll-lock code will break, and it will break silently.
 
+Because each component is its own package, add:
+
+14. **The package itself is correct** — `publint` and `attw` clean, `exports` map resolves, `"use client"` present where needed, size budget committed, README written, and the component appears in the smoke apps. The scaffold (§10, M0) generates all of this, so the DoD item is a check rather than work — but an unchecked one ships a broken install.
+
 ### Tooling
 
 - **Unit + interaction:** Vitest 4 **Browser Mode** (stable since 4.0, Playwright provider). Not jsdom — focus management, `:focus-visible`, top-layer behavior, and cascade layers are exactly what jsdom gets wrong, and they're now the majority of your codebase.
@@ -469,8 +557,8 @@ Because you own the primitives, add:
 - **Automated a11y:** `axe-core` in browser-mode tests. A floor, not a ceiling — axe catches maybe 30% of real issues, and roughly none of the ones you'll create in focus management.
 - **Lint:** oxlint with `jsx-a11y` rules and type-aware linting (stabilized 2026).
 - **Format:** oxfmt (~0.61, beta but widely adopted — Vue core, Turborepo, Sentry). Formats CSS too, so one formatter covers the repo. **Pin the exact version** — beta formatters shift output between minors and that's a huge diff across a component repo.
-- **Package correctness:** `publint` + `@arethetypeswrong/cli`.
-- **Size:** `size-limit` per subpath with a committed budget.
+- **Package correctness:** `publint` + `@arethetypeswrong/cli`, against every package. Fanned out by turbo, so it's one task definition regardless of package count.
+- **Size:** `size-limit` per package with a committed budget. Per-package budgets are more honest than per-subpath ones would have been — the number is what a consumer actually installs, `internal` and `theme` included, with no tree-shaking asterisk.
 - **Build:** `tsdown` (Rolldown) for JS + d.ts, Lightning CSS for CSS.
 
 ### CI matrix
@@ -481,11 +569,11 @@ types     → tsc (TS 6) + tsgo (TS 7 preview, non-blocking)
 unit      → vitest --project unit --browser chromium
 a11y      → axe suite
 visual    → playwright (apps/vrt): light|dark|narrow|hcm|motion × ltr|rtl, chromium
-package   → publint + attw + size-limit + zero-dep guard
-smoke     → pnpm pack → install tarball → build smoke-vite + smoke-next
+package   → publint + attw + size-limit + third-party-dep guard, every package
+smoke     → pnpm pack (all packages) → install tarballs → build smoke-vite + smoke-next
 docs      → build apps/docs (link check + base path); deploy on main
 nightly   → firefox + webkit across the full visual matrix
-release   → changesets + npm Trusted Publishing (OIDC)
+release   → changesets (one fixed group, §4.2) + npm Trusted Publishing (OIDC)
 ```
 
 `smoke` is the job that catches what unit tests structurally cannot — see §8.3. Run it on every PR, not just on release. The `visual` job must run in the same container image used to generate baselines (§8.5).
@@ -513,10 +601,12 @@ The VRT harness, the docs, and the playground all read from **one story format**
 
 ### 8.2 Unit tests need no host app
 
-Vitest Browser Mode boots its own Vite server and mounts components per test. There's nothing to build — just config in `packages/ui`. Note there is **no `visual` project here**: screenshots moved to a dedicated harness (§8.5), for reasons that turn out to be structural rather than stylistic.
+Vitest Browser Mode boots its own Vite server and mounts components per test. There's nothing to build. Note there is **no `visual` project here**: screenshots moved to a dedicated harness (§8.5), for reasons that turn out to be structural rather than stylistic.
+
+**One root config, not one per package.** 66 Vitest configs would be 66 places for browser settings to drift, and a per-package browser instance is far slower than one instance covering the whole matrix. Vitest's `projects` globs across the workspace, so the config stays a single file:
 
 ```ts
-// packages/ui/vitest.config.ts
+// vitest.config.ts  (repo root)
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
@@ -525,15 +615,17 @@ export default defineConfig({
       {
         test: {
           name: "node",
-          include: ["src/**/*.node.test.ts"], // pure logic: mergeProps, collation
+          // pure logic: mergeProps, collation
+          include: ["packages/{internal,components/*}/src/**/*.node.test.ts"],
           environment: "node",
         },
       },
       {
         test: {
           name: "unit",
-          include: ["src/**/*.test.tsx"], // behavior, keyboard, focus, axe
-          setupFiles: ["./test/setup.ts"],
+          // behavior, keyboard, focus, axe
+          include: ["packages/{internal,components/*}/src/**/*.test.tsx"],
+          setupFiles: ["./packages/testing/src/setup.ts"],
           browser: {
             enabled: true,
             provider: "playwright",
@@ -546,19 +638,26 @@ export default defineConfig({
 });
 ```
 
+Tests import their component from source across package boundaries via the workspace link — which is exactly why they cannot catch packaging bugs, and why §8.3 exists.
+
 Three details that matter for this library specifically:
 
-**Import the stylesheet in setup.** Your components don't import their own CSS (you ship a separate bundle), so without this every visual snapshot is unstyled — and worse, you'd never notice a component emitting a class that has no matching rule.
+**Import the stylesheets in setup.** Your components don't import their own CSS, so without this every visual snapshot is unstyled — and worse, you'd never notice a component emitting a class that has no matching rule. With no combined bundle to import, the setup file globs instead:
 
 ```ts
-// packages/ui/test/setup.ts
-import "../src/styles/index.css";
+// packages/testing/src/setup.ts
+import "@pmleczek/theme/src/styles.css";
+
+// No umbrella bundle exists, so pull every component's CSS in directly.
+import.meta.glob("../../components/*/src/**/*.css", { eager: true });
 ```
+
+The glob is deliberately broad: a component whose CSS is never imported anywhere would otherwise pass its tests looking correct in the harness and ship unstyled.
 
 **A `render` helper that takes theme and direction**, so the light/dark × LTR/RTL matrix from the Definition of Done is one line per test rather than boilerplate:
 
 ```tsx
-// packages/ui/test/render.tsx
+// packages/testing/src/render.tsx
 export function renderUI(
   ui: React.ReactNode,
   { theme = "light", dir = "ltr" }: { theme?: "light" | "dark"; dir?: "ltr" | "rtl" } = {},
@@ -571,20 +670,27 @@ export function renderUI(
 }
 ```
 
-**Primitives get their own suites.** `getTabbableCandidates`, `FocusScope`, `useRovingFocus`, `useTypeahead`, and `DismissableLayer` are tested in isolation with throwaway fixture components, not through Menu. When a Menu bug appears you need to know immediately which layer it's in — this is the main structural benefit of owning your primitives, so take it.
+**Primitives get their own suites**, living in `packages/internal` next to what they test. `getTabbableCandidates`, `FocusScope`, `useRovingFocus`, `useTypeahead`, and `DismissableLayer` are tested in isolation with throwaway fixture components, not through Menu. When a Menu bug appears you need to know immediately which layer it's in — this is the main structural benefit of owning your primitives, so take it. Packaging `internal` separately makes the boundary literal: if a bug reproduces against `@pmleczek/internal` alone, it isn't the component's.
 
 ### 8.3 Smoke consumers — the highest-value environment
 
 Unit tests import from `src`. That means they cannot catch: a broken `exports` map, a missing `"use client"`, `sideEffects` misconfiguration, CSS that doesn't survive bundling, `document` accessed at module scope, or hydration mismatches. All six are shipping-breaking, and all six are common in exactly the code you're writing (own primitives = lots of direct DOM access).
 
-**Install the packed tarball, not the workspace link.** A `workspace:*` link resolves through `src` and silently hides every packaging bug. In CI:
+Per-component packaging adds a seventh, and it's the one most likely to bite: **cross-package resolution.** In the workspace, `@pmleczek/button` importing `@pmleczek/internal` resolves through a symlink to source. Published, it resolves through `internal`'s own `exports` map and built `dist`. A missing export, a wrong `types` condition, or a range that doesn't resolve is invisible everywhere except here. This job is now load-bearing for the architecture, not just for the release.
+
+**Install packed tarballs, not workspace links.** A `workspace:*` link resolves through `src` and silently hides every packaging bug. Pack *every* publishable package, not only the ones a PR touched — a component tarball is uninstallable unless its first-party dependencies are installable too:
 
 ```bash
-pnpm --filter @scope/ui build
-pnpm --filter @scope/ui pack --pack-destination /tmp
-pnpm --filter smoke-next add /tmp/scope-ui-0.0.0.tgz
+pnpm -r --filter "./packages/**" build
+pnpm -r --filter "./packages/**" pack --pack-destination /tmp/tarballs
+node scripts/install-tarballs.mjs apps/smoke-next   # see below
+pnpm --filter smoke-next install --no-frozen-lockfile
 pnpm --filter smoke-next build
 ```
+
+`scripts/install-tarballs.mjs` exists because of a specific M0 gotcha: installing `@pmleczek/button-0.0.1.tgz` on its own makes the package manager resolve `@pmleczek/internal@^0.0.1` **from the registry**, which at M0 doesn't exist and after M0 is the *published* version rather than the one you just built. The tested graph would then be a mix of local and remote code. The script writes a `pnpm.overrides` block into the smoke app mapping every `@pmleczek/*` name to its local `file:` tarball, which forces the whole graph local. Get this right at M0 — a smoke job that silently tests the last release instead of the current commit is worse than no smoke job.
+
+Add one assertion to the smoke apps that only matters in this model: render a Dialog containing a Popover containing a Menu, and confirm the `internal` duplicate guard (§4.2) logged nothing. That single check proves the deduplication story end to end against real installed packages.
 
 Two apps, both trivial — one page rendering every component with default props:
 
@@ -598,8 +704,8 @@ Consider adding React Router 7 (framework mode) once you have users asking for i
 Before building either the VRT harness or the docs, define what a "story" is: a **named, deterministic render of one component in one state**. Plain module, no framework, no decorators, no CSF.
 
 ```tsx
-// packages/ui/src/components/Button/Button.stories.tsx
-import type { StoryModule } from "../../../story/types.js";
+// packages/components/button/src/Button.stories.tsx
+import type { StoryModule } from "@pmleczek/testing/story";
 import { Button, buttonVariants, buttonSizes } from "./Button.js";
 
 export default {
@@ -660,7 +766,7 @@ Plus two things that are merely much better in Playwright: cross-browser is one 
 apps/vrt/
 ├── index.html
 ├── src/main.tsx           # route /story/:file/:name, reads ?theme= &dir= &static=
-├── src/stories.gen.ts     # import.meta.glob("../../packages/ui/src/**/*.stories.tsx")
+├── src/stories.gen.ts     # import.meta.glob("../../../packages/components/*/src/**/*.stories.tsx")
 ├── tests/stories.spec.ts
 └── playwright.config.ts
 ```
@@ -729,14 +835,17 @@ One distinction worth making before committing: the objection may be to _Starlig
 - **MDX** via `@mdx-js/rollup` for guides. Component pages aren't MDX — see below.
 - **Shiki** for syntax highlighting, at build time. Zero runtime cost.
 - **Pagefind** for search, post-build. It indexes static HTML and knows nothing about your framework — this is what Starlight uses internally, so you lose nothing by going custom.
-- **Theme built with `@scope/ui`.** The whole point.
+- **Theme built with the kit's own component packages.** The whole point — and with no umbrella package the docs app's `package.json` becomes a public demonstration of how a real consumer's dependency list looks.
 
-**Component pages are generated, not authored.** Three inputs, one page:
+One thing per-component packaging makes worse, so plan for it: **getting-started friction.** A newcomer's first page can no longer say "install one package." Write that page as a copy-pasteable multi-package install for a realistic starter set (theme + button + field + dialog) rather than as a list of 66 options, and put the per-component install command on each component page where someone already knows what they want.
+
+**Component pages are generated, not authored.** Four inputs, one page — the package manifest joins the list, since each component now has its own install command and its own size number:
 
 ```
-Button.stories.tsx    → live examples, variants gallery
-Button.d.ts           → props table (isolatedDeclarations makes extraction reliable)
-Button.css            → component-token table (scan for --ui-button-* declarations)
+button/src/Button.stories.tsx  → live examples, variants gallery
+button/src/Button.d.ts         → props table (isolatedDeclarations makes extraction reliable)
+button/src/Button.css          → component-token table (scan for --ui-button-* declarations)
+button/package.json            → install command, version, size badge
         ↓
     /components/button
 ```
@@ -744,7 +853,7 @@ Button.css            → component-token table (scan for --ui-button-* declarat
 Page template — lock it at M1, since it renders ~50 times:
 
 ```
-1. One-line description + import snippet
+1. One-line description + install + import snippet
 2. Live examples (from stories)
 3. Props table              ← generated
 4. Component-token table    ← generated
@@ -786,7 +895,7 @@ Get this working at M1 with one page. Discovering base-path breakage at M9 with 
 
 **Cloudflare Pages** is the upgrade path, and its one advantage is real: **per-PR deploy previews**, which GitHub Pages doesn't offer. For a UI library where most PRs are visual, a preview URL on every PR is worth a lot once external contributors show up. Free tier is generous. Your VRT artifacts in CI already surface visual diffs, so this is a nice-to-have, not a blocker.
 
-**Recommendation:** GitHub Pages from M1. Move to Cloudflare Pages (or add it for previews only) when contributor PRs start arriving. A custom domain is worth ~€10/year before 1.0 — `github.io` in a URL reads as a hobby project, which undercuts the "production-ready, zero dependencies" pitch.
+**Recommendation:** GitHub Pages from M1. Move to Cloudflare Pages (or add it for previews only) when contributor PRs start arriving. A custom domain is worth ~€10/year before 1.0 — `github.io` in a URL reads as a hobby project, which undercuts the "production-ready, no third-party dependencies" pitch.
 
 ### 8.8 React Native environment (post-1.0 only)
 
@@ -812,12 +921,12 @@ Owning your primitives makes this _slightly_ better than it would otherwise be �
 
 | Shareable                                | Not shareable              |
 | ---------------------------------------- | -------------------------- |
-| Token source (`@scope/ui-tokens`)        | All CSS                    |
+| Token source (`@pmleczek/theme`)         | All CSS                    |
 | Group A hooks (state/props plumbing)     | Groups B–F (all DOM-bound) |
 | Public prop names + TypeScript contracts | Behavior implementations   |
 | Docs structure, naming, design decisions | Tests, VRT baselines       |
 
-**Recommendation:** ship `@scope/ui-tokens` as an RN-ready package at M1 so the door stays open. Write no RN code before web 1.0. The one credible universal path is **react-strict-dom**, but it constrains styling to a StyleX-compatible subset, which kills cascade layers and the component-token override story — a different product with a different pitch. Don't try to be both.
+**Recommendation:** ship `@pmleczek/theme` with an RN-ready token export at M1 so the door stays open. Write no RN code before web 1.0. The one credible universal path is **react-strict-dom**, but it constrains styling to a StyleX-compatible subset, which kills cascade layers and the component-token override story — a different product with a different pitch. Don't try to be both.
 
 ---
 
@@ -825,16 +934,24 @@ Owning your primitives makes this _slightly_ better than it would otherwise be �
 
 Durations are effort-weeks, not calendar time. Building the primitives in-house roughly **doubles** the total versus wrapping an existing primitives library — worth stating up front rather than discovering it at milestone five.
 
-### M0 — Foundations & environments · ~3 weeks
+### M0 — Foundations & environments · ~4 weeks
 
-Monorepo (pnpm workspaces), the shared config packages wired in, tsdown + Lightning CSS build, Vitest projects config (node/unit) green, changesets, commitlint, LICENSE, CODE_OF_CONDUCT, CONTRIBUTING with the zero-dep policy and DCO (§11).
+Monorepo (pnpm workspaces, including the `packages/components/*` glob), the shared config packages wired in, tsdown + Lightning CSS build, root Vitest projects config (node/unit) green, changesets, commitlint, LICENSE, CODE_OF_CONDUCT, CONTRIBUTING with the dependency policy and DCO (§11).
 
-Plus the environments from §8: the story format and types (§8.4), `smoke-vite` and `smoke-next` consuming the **packed tarball**, `playground` skeleton, and the CI matrix including the `smoke` job. Settle the Docker baseline-generation workflow now (§8.5) — it's a one-line decision at M0 and a full regeneration later.
-**Exit:** a trivial component publishes as `0.0.1`, and CI proves it installs and builds from a tarball in both a Vite SPA and a Next.js App Router app. Widened from 2 weeks because the smoke pipeline is real work — and it pays for itself the first time it catches a missing `"use client"`.
+Plus the environments from §8: the story format and types (§8.4), `smoke-vite` and `smoke-next` consuming **packed tarballs with local overrides** (§8.3), `playground` skeleton, and the CI matrix including the `smoke` job. Settle the Docker baseline-generation workflow now (§8.5) — it's a one-line decision at M0 and a full regeneration later.
+
+Four items belong to M0 specifically because of per-component packaging, and all four are far cheaper now than at package number twenty:
+
+- **`packages/build` and `packages/testing`** — the shared build preset and test harness (§4). Every component package consumes these instead of carrying its own config.
+- **`scripts/new-component.mjs`** — scaffolds a package: `package.json` from a template, entry point, CSS with the layer-order line, test, stories, README stub. Writing 66 packages by hand guarantees drift in exactly the fields (`exports`, `sideEffects`, `peerDependencies`) where drift is a shipping bug.
+- **The changesets `fixed` group and the `internal` duplicate guard** (§4.2). The guard is twenty lines and it's the difference between diagnosing a duplicate-instance bug in minutes versus days.
+- **The third-party-dep CI guard** generalised to run per package.
+
+**Exit:** `@pmleczek/theme`, `@pmleczek/internal`, and `@pmleczek/button` all publish as `0.0.1`, and CI proves they install and build **from tarballs, with cross-package resolution going through published `exports` maps**, in both a Vite SPA and a Next.js App Router app. Widened from 3 weeks: the smoke pipeline was already real work, and the tarball-override plumbing plus the scaffold and shared presets add roughly a week. It pays for itself the first time it catches a missing `"use client"` — and again at every component after the first, because the scaffold means package boilerplate is never written twice.
 
 ### M1 — Styling system, harnesses + Button · ~5 weeks
 
-Cascade layer order, three-tier tokens, reset, `ThemeProvider` with FOUC-safe inline script, `@scope/ui-tokens` + build script, the state-attribute vocabulary spec, primitives Group A, and `Button` + `IconButton` to full DoD.
+Cascade layer order, three-tier tokens, reset, `ThemeProvider` with FOUC-safe inline script, `@pmleczek/theme` + build script, the state-attribute vocabulary spec, primitives Group A in `@pmleczek/internal`, and `@pmleczek/button` + `@pmleczek/icon-button` to full DoD.
 
 Plus: `apps/vrt` with the Playwright matrix green against `Button.stories.tsx`; docs as a CSR-only Vite SPA **deployed to GitHub Pages** with the base path verified; the component page template locked; and the props-table and token-table generators working against `Button`.
 **Exit:** the DoD checklist proven end-to-end on one component, that component has a live docs page on a public URL, and its full visual matrix is committed as baselines. From here every component ships with stories, screenshots, and docs in the same PR — no debt accumulates in any of the three.
@@ -876,19 +993,20 @@ All of Tier 4, plus the 1.0 part of Tier 5: `Table`, `DescriptionList`, `Combobo
 
 ### M9 — Guides, polish, 1.0 · ~3 weeks
 
-Component pages already exist (M1 onward), so this milestone is the narrative content: getting-started, theming guide, migration-from-Tailwind guide, accessibility statement, and a page explaining the zero-dependency architecture — that's your differentiator, so give it real estate. Plus custom domain, final a11y audit pass, and the announcement post.
+Component pages already exist (M1 onward), so this milestone is the narrative content: getting-started, theming guide, migration-from-Tailwind guide, accessibility statement, and a page explaining the dependency architecture — why there are no third-party dependencies, why `internal` and `theme` are the only first-party ones, and why components ship as separate packages. That's your differentiator, so give it real estate. Plus custom domain, final a11y audit pass, and the announcement post.
 **Exit:** `1.0.0`, semver commitment, announcement.
 
 ### Post-1.0
 
-The date-picker family, additional themes, a React Native spike, a design-tool component library, a `create-ui-app` starter, i18n of built-in strings, and a possible `@scope/ui-primitives` extraction. See `components/TIER-6-ADVANCED.md` for what belongs here and what doesn't.
+The date-picker family, additional themes, a React Native spike, a design-tool component library, a `create-ui-app` starter, i18n of built-in strings, and a possible promotion of `@pmleczek/internal` into a documented, semver-committed `@pmleczek/primitives`. That promotion is now a documentation-and-commitment decision rather than an extraction — the package already exists and already ships, which makes it both easier to do and easier to do accidentally. See `components/TIER-6-ADVANCED.md` for what belongs here and what doesn't.
 
-**Total to 1.0: roughly 42 effort-weeks.**
+**Total to 1.0: roughly 43 effort-weeks.**
 
-Two structural risks worth naming now:
+Three structural risks worth naming now:
 
 - **M3–M5 span roughly ten weeks with almost nothing user-visible.** Mitigation: ship `0.2.0` at M2 so the presentational components are already in users' hands and generating feedback during the primitives work. Writing up the primitives publicly as they land also converts otherwise-invisible progress into something reviewable.
-- **Scope will grow.** Every component you add to 1.0 costs 2–3× what it would if you were wrapping a primitives library. The single most valuable thing you can do at M8 is cut aggressively. A 40-component library that's flawless beats a 70-component library with three broken keyboard models.
+- **Scope will grow.** Every component you add to 1.0 costs 2–3× what it would if you were wrapping a primitives library, and now also costs a package to publish and maintain. The single most valuable thing you can do at M8 is cut aggressively. A 40-component library that's flawless beats a 70-component library with three broken keyboard models.
+- **`@pmleczek/internal` calcifies.** It's published, 66 packages depend on it, and by M6 changing one of its interfaces means a coordinated major across the set. The window where its APIs are cheap to change is M1–M4 — while there are fewer than a dozen consumers. Front-load the interface design there (the §2.3 positioning interface is the model: write the contract before the implementation) rather than discovering at M7 that `Collection`'s shape is wrong and can't be fixed without a 1.0→2.0 across everything.
 
 ---
 
@@ -916,19 +1034,21 @@ Nothing here constitutes legal advice; projects with different circumstances sho
 
 ## 12. Decisions to make before M0
 
-1. **Name and npm scope.** Settle both before the first publish; renaming a published package is disruptive for early adopters. If the name is distinctive rather than descriptive, a search of the relevant trademark registers is cheap insurance.
+1. ~~Name and npm scope~~ — **decided: scope `@pmleczek`, one package per component, flat names (`@pmleczek/button`).** Renaming published packages is disruptive for early adopters, and with 66 of them it's disruptive 66 times over, so treat this as fixed from the first publish. If the name is distinctive rather than descriptive, a search of the relevant trademark registers is cheap insurance.
 2. ~~Wrap an existing primitives library, or build from scratch~~ — **decided: from scratch.** Consequence: the M5 positioning checkpoint in §10 is the one pre-agreed escape hatch. Honour it.
 3. **Licensing.** §11 — MIT, contributions under DCO.
 4. **React 19-only, or support 18?** Recommend 19+. Ref-as-prop and the modern model are worth the smaller addressable base.
 5. **Browser support target.** Recommend Baseline Widely Available. `oklch`, `color-mix`, cascade layers, nesting, `:has()`, `<dialog>`, `popover`, `inert` all qualify. Anchor positioning does **not** yet, which is exactly why §2.3 needs a fallback. Commit to the target deliberately — the whole architecture rides on it.
-6. **Public state-attribute vocabulary.** With the primitives built in-house, `data-open` vs `data-state="open"` is an open choice and a permanent one. `components/00-CONVENTIONS.md` §3 proposes presence-only booleans and valued enums — review and lock it at M1, because changing it later is a breaking change across ~66 components.
+6. **Public state-attribute vocabulary.** With the primitives built in-house, `data-open` vs `data-state="open"` is an open choice and a permanent one. `components/00-CONVENTIONS.md` §3 proposes presence-only booleans and valued enums — review and lock it at M1, because changing it later is a breaking change across ~66 components, which now means ~66 major version bumps.
+7. ~~Umbrella package?~~ — **decided: no.** Consumers install per component. Worth revisiting only if getting-started friction shows up in real user feedback; adding an umbrella later is additive and non-breaking, whereas removing one is not, so the decision is reversible in the cheap direction.
+8. **`@pmleczek/internal`'s stance toward users who import it anyway.** Undocumented is not the same as blocked. Decide before 1.0 whether a direct import is merely unsupported (a README sentence) or actively discouraged (no types on deep paths, a console warning in dev). §4.1 assumes the former; the cost of being wrong shows up as bug reports from people depending on internals you then break.
 
 ## Appendix A — Button reference implementation
 
 ```tsx
-// packages/ui/src/components/Button/Button.tsx
-import type { RenderProp } from "../../internal/props/render.js";
-import { useRender } from "../../internal/props/useRender.js";
+// packages/components/button/src/Button.tsx
+import type { RenderProp } from "@pmleczek/internal/props";
+import { useRender } from "@pmleczek/internal/props";
 
 export const buttonVariants = ["solid", "soft", "outline", "ghost"] as const;
 export const buttonSizes = ["sm", "md", "lg"] as const;
@@ -995,7 +1115,9 @@ function preventActivation(event: React.MouseEvent) {
 ```
 
 ```css
-/* packages/ui/src/components/Button/Button.css */
+/* packages/components/button/src/Button.css */
+@layer ui.reset, ui.tokens, ui.base, ui.components, ui.variants;
+
 @layer ui.components {
   .ui-Button {
     --_bg: var(--ui-button-bg, var(--ui-color-accent));
@@ -1096,7 +1218,7 @@ function preventActivation(event: React.MouseEvent) {
 Design this at the start of M5 and never let geometry logic leak outside it. This interface is what makes the M5 checkpoint in §10 a one-week swap instead of a rewrite.
 
 ```ts
-// packages/ui/src/internal/positioning/types.ts
+// packages/internal/src/positioning/types.ts
 
 export type Side = "top" | "right" | "bottom" | "left";
 export type Align = "start" | "center" | "end";
