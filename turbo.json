@@ -1,13 +1,6 @@
 {
   "$schema": "https://turborepo.dev/schema.json",
   "tasks": {
-    "format": {
-      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/oxfmt.config.ts"]
-    },
-    "format:fix": {
-      "cache": false,
-      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/oxfmt.config.ts"]
-    },
     "lint": {
       "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/oxlint.config.ts"]
     },

@@ -5,8 +5,8 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "format": "turbo format",
-    "format:fix": "turbo format:fix",
+    "format": "oxfmt --check .",
+    "format:fix": "oxfmt .",
     "lint": "turbo lint",
     "lint:fix": "turbo lint:fix",
     "typecheck": "turbo typecheck"

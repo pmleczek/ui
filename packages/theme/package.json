@@ -6,8 +6,6 @@
   "type": "module",
   "main": "src/index.ts",
   "scripts": {
-    "format": "oxfmt --check --config ../../oxfmt.config.ts",
-    "format:fix": "oxfmt --config ../../oxfmt.config.ts",
     "lint": "oxlint --config ../../oxlint.config.ts .",
     "lint:fix": "oxlint --fix --config ../../oxlint.config.ts .",
     "typecheck": "tsc --noEmit"
