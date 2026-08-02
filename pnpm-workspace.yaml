@@ -22,7 +22,7 @@ catalog:
   oxfmt: 0.60.0
   oxlint: 1.75.0
   turbo: 2.10.6
-  typescript: 7.0.2
+  typescript: 6.0.3
 
 onlyBuiltDependencies:
   - lefthook
