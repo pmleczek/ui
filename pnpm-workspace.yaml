@@ -16,9 +16,16 @@ packages:
 
 catalog:
   '@commitlint/cli': 21.2.0
-  "@commitlint/config-conventional": 21.2.0
+  '@commitlint/config-conventional': 21.2.0
   '@commitlint/types': 21.2.0
+  lefthook: 2.1.10
   oxfmt: 0.60.0
   oxlint: 1.75.0
   turbo: 2.10.6
   typescript: 7.0.2
+
+onlyBuiltDependencies:
+  - lefthook
+
+allowBuilds:
+  lefthook: true

@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "license": "MIT",
+  "type": "module",
   "scripts": {
     "format": "turbo format",
     "format:fix": "turbo format:fix",
@@ -15,6 +16,7 @@
     "@commitlint/cli": "catalog:",
     "@commitlint/config-conventional": "catalog:",
     "@commitlint/types": "catalog:",
+    "lefthook": "catalog:",
     "oxfmt": "catalog:",
     "oxlint": "catalog:",
     "turbo": "catalog:",
