@@ -1,19 +1,23 @@
-auditLevel: "high"
+auditLevel: 'high'
 blockExoticSubdeps: true
 minimumReleaseAge: 10080 # 7 days
 minimumReleaseAgeStrict: true
-nodeLinker: "isolated"
+nodeLinker: 'isolated'
 preferFrozenLockfile: true
 preferOffline: false
 resolvePeersFromWorkspaceRoot: true
 strictPeerDependencies: true
-trustPolicy: "no-downgrade"
+trustPolicy: 'no-downgrade'
 
 packages:
-  - "apps/*"
-  - "packages/*"
+  - 'apps/*'
+  - 'packages/*'
+  - 'packages/components/*'
 
 catalog:
+  '@commitlint/cli': 21.2.0
+  "@commitlint/config-conventional": 21.2.0
+  '@commitlint/types': 21.2.0
   oxfmt: 0.60.0
   oxlint: 1.75.0
   turbo: 2.10.6
