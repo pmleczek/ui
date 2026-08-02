@@ -22,7 +22,7 @@ Pitch: **"shadcn's quality, delivered as packages you can upgrade, with no third
 
 The dependency claim is your single strongest marketing asset. Every competitor has a dependency tree; a component package here pulls in `@pmleczek/internal` and `@pmleczek/theme` and nothing else. Put the third-party count in the README badge and never let it move off zero.
 
-Per-component packaging sharpens a second claim that a monolithic package can't make honestly: **you install what you use, and the install size is the whole story.** No tree-shaking caveats, no "it's only large if you import everything", no side-effect footnotes. `@pmleczek/button` is a few kilobytes because it *is* a few kilobytes.
+Per-component packaging sharpens a second claim that a monolithic package can't make honestly: **you install what you use, and the install size is the whole story.** No tree-shaking caveats, no "it's only large if you import everything", no side-effect footnotes. `@pmleczek/button` is a few kilobytes because it _is_ a few kilobytes.
 
 Non-goals — write these in the README on day one:
 
@@ -157,7 +157,7 @@ Consumer CSS that isn't in a layer **always** beats layered CSS, regardless of s
 
 ```css
 /* Library, inside @layer ui.components */
-.ui-Button[data-variant="solid"][data-size="lg"] {
+.ui-Button[data-variant='solid'][data-size='lg'] {
   padding-inline: 1.25rem;
 }
 
@@ -171,8 +171,8 @@ This is precisely what Tailwind users fight when they reach for `!important` and
 
 ```css
 @layer reset, ui, app;
-@import "@pmleczek/theme/styles.css" layer(ui);
-@import "@pmleczek/button/styles.css" layer(ui);
+@import '@pmleczek/theme/styles.css' layer(ui);
+@import '@pmleczek/button/styles.css' layer(ui);
 ```
 
 ### 3.2 Three-tier tokens
@@ -203,11 +203,15 @@ This is precisely what Tailwind users fight when they reach for `!important` and
     --ui-color-text-muted: oklch(from var(--ui-color-text) l c h / 0.65);
     --ui-color-accent: var(--ui-accent-500);
     --ui-color-accent-text: var(--ui-neutral-0);
-    --ui-color-border: color-mix(in oklch, var(--ui-color-text) 15%, transparent);
+    --ui-color-border: color-mix(
+      in oklch,
+      var(--ui-color-text) 15%,
+      transparent
+    );
     --ui-color-focus-ring: var(--ui-color-accent);
   }
 
-  [data-ui-theme="dark"] {
+  [data-ui-theme='dark'] {
     color-scheme: dark;
     --ui-color-surface: var(--ui-neutral-950);
     --ui-color-surface-raised: oklch(0.2 0.01 250);
@@ -239,7 +243,7 @@ This is precisely what Tailwind users fight when they reach for `!important` and
 ```
 
 ```tsx
-<Button style={{ "--ui-button-bg": "rebeccapurple" }}>Buy</Button>
+<Button style={{ '--ui-button-bg': 'rebeccapurple' }}>Buy</Button>
 ```
 
 That pattern is your "more flexible than Tailwind" headline. Document the component-token table per component — it _is_ public API and it's semver-relevant.
@@ -372,14 +376,14 @@ The singleton guarantee holds only while the dependency graph resolves to **one*
 
 Three mechanisms, all cheap, all at M0:
 
-1. **Caret ranges, not exact pins.** `"@pmleczek/internal": "^1.4.0"`. Exact pins would *guarantee* duplication the moment two component versions drift; caret ranges let the package manager dedupe to one copy across the whole major.
+1. **Caret ranges, not exact pins.** `"@pmleczek/internal": "^1.4.0"`. Exact pins would _guarantee_ duplication the moment two component versions drift; caret ranges let the package manager dedupe to one copy across the whole major.
 2. **One changesets `fixed` group** covering every component package plus `internal` and `theme`. They always share a version line, so a user who upgrades any of them onto the same version gets a consistent set, and a breaking change in `internal` is a coordinated major across the set — exactly what a monolith release would have been.
 3. **A dev-only duplicate guard in `internal`.** On import, register the version on a well-known symbol; if a different version is already registered, `console.error` with both versions and the fix. Stripped in production builds.
 
 ```ts
 // packages/internal/src/guard.ts
-const KEY = Symbol.for("@pmleczek/internal");
-if (process.env.NODE_ENV !== "production") {
+const KEY = Symbol.for('@pmleczek/internal');
+if (process.env.NODE_ENV !== 'production') {
   const seen = (globalThis as Record<symbol, unknown>)[KEY];
   if (seen && seen !== VERSION) {
     console.error(
@@ -392,7 +396,7 @@ if (process.env.NODE_ENV !== "production") {
 }
 ```
 
-**During `0.x` this is worse than it will be at 1.0**, and it's worth knowing before the first release rather than after: `^0.1.0` and `^0.2.0` are incompatible ranges under semver, so *every* minor bump splits consumers who upgrade piecemeal. Document "upgrade the whole set together" prominently from the first publish, and keep the pre-1.0 release cadence lockstep across the fixed group.
+**During `0.x` this is worse than it will be at 1.0**, and it's worth knowing before the first release rather than after: `^0.1.0` and `^0.2.0` are incompatible ranges under semver, so _every_ minor bump splits consumers who upgrade piecemeal. Document "upgrade the whole set together" prominently from the first publish, and keep the pre-1.0 release cadence lockstep across the fixed group.
 
 ### 4.3 Package shape
 
@@ -431,7 +435,7 @@ Never: lodash, classnames, date libraries, polyfills, animation libraries.
 
 CI check: for every package, fail the build if any entry in `dependencies` is outside the `@pmleczek/` scope. One line, permanent guarantee.
 
-Shared *behavior* goes into `internal`, never into a sibling component package. A dependency web across 66 packages is the specific way this model goes wrong, and it goes wrong quietly — each individual "Select just imports Menu's hook" decision looks reasonable.
+Shared _behavior_ goes into `internal`, never into a sibling component package. A dependency web across 66 packages is the specific way this model goes wrong, and it goes wrong quietly — each individual "Select just imports Menu's hook" decision looks reasonable.
 
 ---
 
@@ -468,14 +472,14 @@ export type RenderProp<State> =
 **Variants from one const:**
 
 ```tsx
-export const buttonVariants = ["solid", "soft", "outline", "ghost"] as const;
+export const buttonVariants = ['solid', 'soft', 'outline', 'ghost'] as const;
 export type ButtonVariant = (typeof buttonVariants)[number];
 ```
 
 **Typed CSS custom properties:**
 
 ```ts
-declare module "react" {
+declare module 'react' {
   interface CSSProperties {
     [key: `--ui-${string}`]: string | number | undefined;
   }
@@ -485,8 +489,8 @@ declare module "react" {
 **A11y enforced at the type level** — this is a genuinely novel selling point:
 
 ```tsx
-type IconButtonProps = React.ComponentPropsWithRef<"button"> &
-  ({ "aria-label": string } | { "aria-labelledby": string });
+type IconButtonProps = React.ComponentPropsWithRef<'button'> &
+  ({ 'aria-label': string } | { 'aria-labelledby': string });
 ```
 
 An icon-only button without an accessible name should be a **compile error**. Same for `Dialog` (title required), `Tabs` (label required), `Image` (`alt` required or explicitly `""`).
@@ -607,29 +611,29 @@ Vitest Browser Mode boots its own Vite server and mounts components per test. Th
 
 ```ts
 // vitest.config.ts  (repo root)
-import { defineConfig } from "vitest/config";
+import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
     projects: [
       {
         test: {
-          name: "node",
+          name: 'node',
           // pure logic: mergeProps, collation
-          include: ["packages/{internal,components/*}/src/**/*.node.test.ts"],
-          environment: "node",
+          include: ['packages/{internal,components/*}/src/**/*.node.test.ts'],
+          environment: 'node',
         },
       },
       {
         test: {
-          name: "unit",
+          name: 'unit',
           // behavior, keyboard, focus, axe
-          include: ["packages/{internal,components/*}/src/**/*.test.tsx"],
-          setupFiles: ["./packages/testing/src/setup.ts"],
+          include: ['packages/{internal,components/*}/src/**/*.test.tsx'],
+          setupFiles: ['./packages/testing/src/setup.ts'],
           browser: {
             enabled: true,
-            provider: "playwright",
-            instances: [{ browser: "chromium" }],
+            provider: 'playwright',
+            instances: [{ browser: 'chromium' }],
           },
         },
       },
@@ -646,10 +650,10 @@ Three details that matter for this library specifically:
 
 ```ts
 // packages/testing/src/setup.ts
-import "@pmleczek/theme/src/styles.css";
+import '@pmleczek/theme/src/styles.css';
 
 // No umbrella bundle exists, so pull every component's CSS in directly.
-import.meta.glob("../../components/*/src/**/*.css", { eager: true });
+import.meta.glob('../../components/*/src/**/*.css', { eager: true });
 ```
 
 The glob is deliberately broad: a component whose CSS is never imported anywhere would otherwise pass its tests looking correct in the harness and ship unstyled.
@@ -660,7 +664,10 @@ The glob is deliberately broad: a component whose CSS is never imported anywhere
 // packages/testing/src/render.tsx
 export function renderUI(
   ui: React.ReactNode,
-  { theme = "light", dir = "ltr" }: { theme?: "light" | "dark"; dir?: "ltr" | "rtl" } = {},
+  {
+    theme = 'light',
+    dir = 'ltr',
+  }: { theme?: 'light' | 'dark'; dir?: 'ltr' | 'rtl' } = {},
 ) {
   return render(
     <ThemeProvider theme={theme}>
@@ -678,7 +685,7 @@ Unit tests import from `src`. That means they cannot catch: a broken `exports` m
 
 Per-component packaging adds a seventh, and it's the one most likely to bite: **cross-package resolution.** In the workspace, `@pmleczek/button` importing `@pmleczek/internal` resolves through a symlink to source. Published, it resolves through `internal`'s own `exports` map and built `dist`. A missing export, a wrong `types` condition, or a range that doesn't resolve is invisible everywhere except here. This job is now load-bearing for the architecture, not just for the release.
 
-**Install packed tarballs, not workspace links.** A `workspace:*` link resolves through `src` and silently hides every packaging bug. Pack *every* publishable package, not only the ones a PR touched — a component tarball is uninstallable unless its first-party dependencies are installable too:
+**Install packed tarballs, not workspace links.** A `workspace:*` link resolves through `src` and silently hides every packaging bug. Pack _every_ publishable package, not only the ones a PR touched — a component tarball is uninstallable unless its first-party dependencies are installable too:
 
 ```bash
 pnpm -r --filter "./packages/**" build
@@ -688,7 +695,7 @@ pnpm --filter smoke-next install --no-frozen-lockfile
 pnpm --filter smoke-next build
 ```
 
-`scripts/install-tarballs.mjs` exists because of a specific M0 gotcha: installing `@pmleczek/button-0.0.1.tgz` on its own makes the package manager resolve `@pmleczek/internal@^0.0.1` **from the registry**, which at M0 doesn't exist and after M0 is the *published* version rather than the one you just built. The tested graph would then be a mix of local and remote code. The script writes a `pnpm.overrides` block into the smoke app mapping every `@pmleczek/*` name to its local `file:` tarball, which forces the whole graph local. Get this right at M0 — a smoke job that silently tests the last release instead of the current commit is worse than no smoke job.
+`scripts/install-tarballs.mjs` exists because of a specific M0 gotcha: installing `@pmleczek/button-0.0.1.tgz` on its own makes the package manager resolve `@pmleczek/internal@^0.0.1` **from the registry**, which at M0 doesn't exist and after M0 is the _published_ version rather than the one you just built. The tested graph would then be a mix of local and remote code. The script writes a `pnpm.overrides` block into the smoke app mapping every `@pmleczek/*` name to its local `file:` tarball, which forces the whole graph local. Get this right at M0 — a smoke job that silently tests the last release instead of the current commit is worse than no smoke job.
 
 Add one assertion to the smoke apps that only matters in this model: render a Dialog containing a Popover containing a Menu, and confirm the `internal` duplicate guard (§4.2) logged nothing. That single check proves the deduplication story end to end against real installed packages.
 
@@ -705,11 +712,11 @@ Before building either the VRT harness or the docs, define what a "story" is: a 
 
 ```tsx
 // packages/components/button/src/Button.stories.tsx
-import type { StoryModule } from "@pmleczek/testing/story";
-import { Button, buttonVariants, buttonSizes } from "./Button.js";
+import type { StoryModule } from '@pmleczek/testing/story';
+import { Button, buttonVariants, buttonSizes } from './Button.js';
 
 export default {
-  title: "Button",
+  title: 'Button',
   stories: {
     variants: () => (
       <Row>
@@ -737,7 +744,9 @@ export default {
         Save
       </Button>
     ),
-    longLabel: () => <Button>A deliberately long label that has to wrap somewhere</Button>,
+    longLabel: () => (
+      <Button>A deliberately long label that has to wrap somewhere</Button>
+    ),
   },
 } satisfies StoryModule;
 ```
@@ -776,29 +785,44 @@ The app renders exactly one story on an otherwise blank page — no nav, no chro
 ```ts
 // apps/vrt/playwright.config.ts
 export default defineConfig({
-  webServer: { command: "pnpm --filter vrt preview", port: 4173 },
-  snapshotPathTemplate: "{testDir}/__screenshots__/{projectName}/{arg}{ext}",
+  webServer: { command: 'pnpm --filter vrt preview', port: 4173 },
+  snapshotPathTemplate: '{testDir}/__screenshots__/{projectName}/{arg}{ext}',
   projects: [
-    { name: "light", use: { ...devices["Desktop Chrome"], colorScheme: "light" } },
-    { name: "dark", use: { ...devices["Desktop Chrome"], colorScheme: "dark" } },
     {
-      name: "narrow",
-      use: { ...devices["Desktop Chrome"], viewport: { width: 320, height: 800 } },
+      name: 'light',
+      use: { ...devices['Desktop Chrome'], colorScheme: 'light' },
     },
-    { name: "hcm", use: { ...devices["Desktop Chrome"], forcedColors: "active" } },
-    { name: "motion", use: { ...devices["Desktop Chrome"], reducedMotion: "reduce" } },
-    { name: "webkit", use: { ...devices["Desktop Safari"] } },
-    { name: "firefox", use: { ...devices["Desktop Firefox"] } },
+    {
+      name: 'dark',
+      use: { ...devices['Desktop Chrome'], colorScheme: 'dark' },
+    },
+    {
+      name: 'narrow',
+      use: {
+        ...devices['Desktop Chrome'],
+        viewport: { width: 320, height: 800 },
+      },
+    },
+    {
+      name: 'hcm',
+      use: { ...devices['Desktop Chrome'], forcedColors: 'active' },
+    },
+    {
+      name: 'motion',
+      use: { ...devices['Desktop Chrome'], reducedMotion: 'reduce' },
+    },
+    { name: 'webkit', use: { ...devices['Desktop Safari'] } },
+    { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
   ],
 });
 ```
 
 ```ts
 // apps/vrt/tests/stories.spec.ts
-import { manifest } from "../src/stories.gen.js";
+import { manifest } from '../src/stories.gen.js';
 
 for (const { file, name } of manifest) {
-  for (const dir of ["ltr", "rtl"] as const) {
+  for (const dir of ['ltr', 'rtl'] as const) {
     test(`${file}/${name}/${dir}`, async ({ page }) => {
       await page.goto(`/story/${file}/${name}?dir=${dir}&static=1`);
       await page.evaluate(() => document.fonts.ready);
@@ -886,8 +910,8 @@ The one real gotcha is the base path. `<org>.github.io/ui/` means every asset UR
 ```js
 // apps/docs/astro.config.mjs
 export default defineConfig({
-  site: "https://<org>.github.io",
-  base: "/ui", // omit if you move to a custom domain
+  site: 'https://<org>.github.io',
+  base: '/ui', // omit if you move to a custom domain
 });
 ```
 
@@ -1047,16 +1071,16 @@ Nothing here constitutes legal advice; projects with different circumstances sho
 
 ```tsx
 // packages/components/button/src/Button.tsx
-import type { RenderProp } from "@pmleczek/internal/props";
-import { useRender } from "@pmleczek/internal/props";
+import type { RenderProp } from '@pmleczek/internal/props';
+import { useRender } from '@pmleczek/internal/props';
 
-export const buttonVariants = ["solid", "soft", "outline", "ghost"] as const;
-export const buttonSizes = ["sm", "md", "lg"] as const;
+export const buttonVariants = ['solid', 'soft', 'outline', 'ghost'] as const;
+export const buttonSizes = ['sm', 'md', 'lg'] as const;
 
 export type ButtonVariant = (typeof buttonVariants)[number];
 export type ButtonSize = (typeof buttonSizes)[number];
 
-export interface ButtonProps extends React.ComponentPropsWithRef<"button"> {
+export interface ButtonProps extends React.ComponentPropsWithRef<'button'> {
   variant?: ButtonVariant;
   size?: ButtonSize;
   /** Shows a spinner, sets aria-busy, blocks activation — without leaving the tab order. */
@@ -1068,10 +1092,10 @@ export interface ButtonProps extends React.ComponentPropsWithRef<"button"> {
 
 export function Button(props: ButtonProps): React.ReactElement {
   const {
-    variant = "solid",
-    size = "md",
+    variant = 'solid',
+    size = 'md',
     loading = false,
-    loadingLabel = "Loading",
+    loadingLabel = 'Loading',
     disabled,
     children,
     render,
@@ -1083,15 +1107,15 @@ export function Button(props: ButtonProps): React.ReactElement {
     state: { variant, size },
     props: {
       ...rest,
-      type: rest.type ?? "button",
-      className: `ui-Button ${rest.className ?? ""}`.trim(),
-      "data-variant": variant,
-      "data-size": size,
-      "data-loading": loading ? "" : undefined,
+      type: rest.type ?? 'button',
+      className: `ui-Button ${rest.className ?? ''}`.trim(),
+      'data-variant': variant,
+      'data-size': size,
+      'data-loading': loading ? '' : undefined,
       // Not `disabled`: a disabled button leaves the tab order and its
       // tooltip becomes unreachable. aria-disabled keeps it focusable.
-      "aria-disabled": disabled || loading || undefined,
-      "aria-busy": loading || undefined,
+      'aria-disabled': disabled || loading || undefined,
+      'aria-busy': loading || undefined,
       onClick: disabled || loading ? preventActivation : rest.onClick,
       children: (
         <>
@@ -1138,32 +1162,32 @@ function preventActivation(event: React.MouseEvent) {
     cursor: pointer;
     transition: background var(--ui-duration-fast) var(--ui-ease-out);
 
-    &[data-size="sm"] {
+    &[data-size='sm'] {
       block-size: 2rem;
       padding-inline: var(--ui-space-3);
       font-size: 0.875rem;
     }
-    &[data-size="md"] {
+    &[data-size='md'] {
       block-size: 2.5rem;
       padding-inline: var(--ui-space-4);
       font-size: 0.9375rem;
     }
-    &[data-size="lg"] {
+    &[data-size='lg'] {
       block-size: 3rem;
       padding-inline: var(--ui-space-5);
       font-size: 1rem;
     }
 
-    &[data-variant="soft"] {
+    &[data-variant='soft'] {
       --_bg: color-mix(in oklch, var(--ui-color-accent) 14%, transparent);
       --_fg: var(--ui-color-accent);
     }
-    &[data-variant="outline"] {
+    &[data-variant='outline'] {
       --_bg: transparent;
       --_fg: var(--ui-color-text);
       border-color: var(--ui-color-border);
     }
-    &[data-variant="ghost"] {
+    &[data-variant='ghost'] {
       --_bg: transparent;
       --_fg: var(--ui-color-text);
     }
@@ -1220,8 +1244,8 @@ Design this at the start of M5 and never let geometry logic leak outside it. Thi
 ```ts
 // packages/internal/src/positioning/types.ts
 
-export type Side = "top" | "right" | "bottom" | "left";
-export type Align = "start" | "center" | "end";
+export type Side = 'top' | 'right' | 'bottom' | 'left';
+export type Align = 'start' | 'center' | 'end';
 
 export interface PositionOptions {
   side?: Side;
