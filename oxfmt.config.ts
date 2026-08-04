@@ -7,7 +7,7 @@ export default defineConfig({
   semi: true,
   singleQuote: true,
   trailingComma: 'all',
-  ignorePatterns: ["*.config.ts", "node_modules"],
+  ignorePatterns: ['node_modules'],
   sortImports: {
     newlinesBetween: true,
     groups: [
