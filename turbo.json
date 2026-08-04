@@ -1,6 +1,7 @@
 {
   "$schema": "https://turborepo.dev/schema.json",
   "tasks": {
+    "transit": { "dependsOn": ["^transit"] },
     "lint": {
       "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/oxlint.config.ts"]
     },
@@ -9,6 +10,7 @@
       "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/oxlint.config.ts"]
     },
     "typecheck": {
+      "dependsOn": ["transit"],
       "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/tsconfig"]
     }
   },
