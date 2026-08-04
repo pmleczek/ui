@@ -8,7 +8,7 @@ export default {
     {
       rules: {
         'no-breaking-marker': ({ header, raw }) => [
-          !/^\w+!:/.test(header ?? '') &&
+          !/^\w+(\([^)]*\))?!:/.test(header ?? '') &&
             !/^BREAKING[ -]CHANGE:/m.test(raw ?? ''),
           'breaking changes are not marked in this repo — no `type!:` and no `BREAKING CHANGE:` footer',
         ],
@@ -44,7 +44,7 @@ export default {
       ['sentence-case', 'start-case', 'pascal-case', 'upper-case'],
     ],
     'header-max-length': [E, 'always', 72],
-    'body-empty': [E, 'always'],
+    'body-leading-blank': [E, 'always'],
     'no-breaking-marker': [E, 'always'],
   },
 } satisfies UserConfig;
