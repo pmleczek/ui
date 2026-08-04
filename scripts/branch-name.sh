@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-branch="$(git rev-parse --abbrev-ref HEAD)"
+# lefthook consumes the stdin git uses to report the refs being pushed, so the
+# checked-out branch is the only signal available here. A detached HEAD has no
+# branch name to validate, so it is skipped rather than rejected.
+branch="$(git symbolic-ref --quiet --short HEAD || true)"
 
-if [ "$branch" = "main" ]; then
+if [ -z "$branch" ] || [ "$branch" = "main" ]; then
   exit 0
 fi
 
