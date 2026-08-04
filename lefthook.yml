@@ -7,11 +7,11 @@ pre-commit:
   jobs:
     - name: format
       glob: '*.{ts,tsx,js,jsx,mjs,json,jsonc,css,md,yml,yaml}'
-      run: pnpm exec oxfmt --config oxfmt.config.ts {staged_files}
+      run: pnpm exec oxfmt --no-error-on-unmatched-pattern --config oxfmt.config.ts {staged_files}
       stage_fixed: true
     - name: lint
       glob: '*.{ts,tsx,js,jsx,mjs}'
-      run: pnpm exec oxlint --config oxlint.config.ts {staged_files}
+      run: pnpm exec oxlint --no-error-on-unmatched-pattern --config oxlint.config.ts {staged_files}
 
 pre-push:
   parallel: true
