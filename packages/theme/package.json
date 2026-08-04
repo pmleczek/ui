@@ -1,0 +1,19 @@
+{
+  "name": "@pmleczek/theme",
+  "version": "0.1.0",
+  "private": false,
+  "license": "MIT",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "lint": "oxlint --config ../../oxlint.config.ts .",
+    "lint:fix": "oxlint --fix --config ../../oxlint.config.ts .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@pmleczek/tsconfig": "workspace:*",
+    "typescript": "catalog:"
+  },
+  "peerDependencies": {}
+}
